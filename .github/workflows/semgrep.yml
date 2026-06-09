@@ -1,46 +1,42 @@
-name: Semgrep
+name: Semgrep Spring Java Managed SAST
 
 on:
   push:
-    branches: ["main"]
+    branches: ["master", "main", "develop"]
   pull_request:
-    branches: ["main"]
-  workflow_dispatch:
+    branches: ["master", "main", "develop"]
   schedule:
-    - cron: "17 13 * * 3"
+    - cron: "15 6 * * 2"
+  workflow_dispatch:
 
 permissions:
   contents: read
+  security-events: write
+  actions: read
 
 jobs:
   semgrep:
-    name: Scan
+    name: Semgrep Spring Java Managed SAST
     runs-on: ubuntu-latest
-
-    permissions:
-      contents: read
-      security-events: write
-      actions: read
-
     container:
-      image: semgrep/semgrep
+      image: semgrep/semgrep:latest
 
-    if: github.actor != 'dependabot[bot]'
+    env:
+      SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }}
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v6
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      - name: Generate SARIF for GitHub code scanning
-        run: semgrep scan --config .semgrep --sarif --output semgrep.sarif || true
+      - name: Run Semgrep managed scan
+        run: |
+          semgrep ci \
+            --sarif \
+            --output semgrep.sarif
 
-      - name: Upload SARIF file
-        uses: github/codeql-action/upload-sarif@v4
+      - name: Upload SARIF to GitHub Code Scanning
         if: always()
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: semgrep.sarif
-
-      - name: Run Semgrep CI
-        run: semgrep ci
-        env:
-          SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }}
+          category: semgrep-spring-java-managed
